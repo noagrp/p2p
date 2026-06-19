@@ -2,96 +2,99 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Simple P2P Transfer</title>
+    <title>Simple P2P - Copy Paste</title>
+    <script src="https://unpkg.com/simple-peer@9/simplepeer.min.js"></script>
     <style>
         body { font-family: monospace; background: #000; color: #0f0; padding: 20px; }
-        textarea { width: 100%; height: 150px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 10px; }
-        button { padding: 15px; background: #111; color: #0f0; border: 1px solid #0f0; margin: 10px 0; font-size: 16px; }
+        textarea { width: 100%; height: 140px; background: #111; color: #0f0; border: 2px solid #0f0; padding: 10px; }
+        button { padding: 15px 25px; margin: 8px 0; background: #111; color: #0f0; border: 2px solid #0f0; font-size: 17px; }
+        button:hover { background: #0f0; color: #000; }
+        #status { padding: 20px; background: #222; font-size: 18px; margin: 15px 0; min-height: 50px; }
     </style>
 </head>
 <body>
     <h1>Simple P2P File Transfer</h1>
 
-    <div>
-        <h2>Device A (Start Here)</h2>
-        <button onclick="startA()">1. Create Code</button>
-        <textarea id="codeA" placeholder="Code for B will appear here"></textarea>
-    </div>
+    <h3>1. Device A - Create Offer</h3>
+    <button onclick="startA()">Create Offer</button><br><br>
+    <textarea id="offer" placeholder="Copy this to Device B"></textarea>
 
-    <div>
-        <h2>Device B</h2>
-        <textarea id="inputB" placeholder="Paste code from A here"></textarea>
-        <button onclick="startB()">2. Connect & Create Reply</button>
-        <textarea id="codeB" placeholder="Reply code for A"></textarea>
-    </div>
+    <h3>2. Device B</h3>
+    <textarea id="offerFromA" placeholder="Paste from Device A"></textarea><br>
+    <button onclick="startB()">Create Reply</button><br><br>
+    <textarea id="reply" placeholder="Copy this back to Device A"></textarea>
 
-    <div>
-        <h2>Device A Final Step</h2>
-        <textarea id="finalInput" placeholder="Paste reply from B here"></textarea>
-        <button onclick="finalConnect()">3. Final Connect</button>
-    </div>
+    <h3>3. Device A - Final Step</h3>
+    <textarea id="replyFromB" placeholder="Paste reply from Device B"></textarea><br>
+    <button onclick="finalConnect()">Final Connect</button>
 
-    <div>
-        <h2>Send File</h2>
-        <input type="file" id="file" multiple>
-        <button onclick="send()">Send</button>
-    </div>
+    <h3>Send File (After Connected)</h3>
+    <input type="file" id="fileInput"><br><br>
+    <button onclick="sendFile()">Send File</button>
 
-    <div id="status">Status: Ready</div>
+    <div id="status">Status: Not connected</div>
 
-    <script src="https://unpkg.com/simple-peer@9/simplepeer.min.js"></script>
     <script>
         let peer = null;
 
         function startA() {
             peer = new SimplePeer({ initiator: true, trickle: false });
             
-            peer.on('signal', d => {
-                document.getElementById('codeA').value = JSON.stringify(d);
-                document.getElementById('status').innerHTML = "Send the code above to Device B";
+            peer.on('signal', data => {
+                document.getElementById('offer').value = JSON.stringify(data);
             });
-            
-            peer.on('connect', () => document.getElementById('status').innerHTML = "✅ Connected");
+
+            peer.on('connect', () => {
+                document.getElementById('status').innerHTML = "✅ SUCCESSFULLY CONNECTED!";
+                document.getElementById('status').style.color = "#0f0";
+            });
+
+            setupReceive();
         }
 
         function startB() {
-            const data = JSON.parse(document.getElementById('inputB').value);
+            const data = JSON.parse(document.getElementById('offerFromA').value);
             peer = new SimplePeer({ initiator: false, trickle: false });
             peer.signal(data);
-            
-            peer.on('signal', d => {
-                document.getElementById('codeB').value = JSON.stringify(d);
-                document.getElementById('status').innerHTML = "Send this reply code back to Device A";
+
+            peer.on('signal', data => {
+                document.getElementById('reply').value = JSON.stringify(data);
             });
+
+            setupReceive();
         }
 
         function finalConnect() {
-            const data = JSON.parse(document.getElementById('finalInput').value);
+            const data = JSON.parse(document.getElementById('replyFromB').value);
             peer.signal(data);
         }
 
-        async function send() {
-            if (!peer || !peer.connected) return alert("Not connected");
-            
-            const file = document.getElementById('file').files[0];
-            if (!file) return alert("No file");
+        function setupReceive() {
+            peer.on('data', (data) => {
+                document.getElementById('status').innerHTML += "<br>Data received";
+            });
+        }
+
+        async function sendFile() {
+            if (!peer || !peer.connected) {
+                alert("Not connected yet! Complete all 3 steps first.");
+                return;
+            }
+
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return alert("No file selected");
 
             peer.send(JSON.stringify({name: file.name, size: file.size}));
 
-            const chunk = 16*1024;
-            for (let i = 0; i < file.size; i += chunk) {
-                const part = file.slice(i, i + chunk);
-                peer.send(await part.arrayBuffer());
+            const chunkSize = 16 * 1024;
+            let offset = 0;
+            while (offset < file.size) {
+                const chunk = file.slice(offset, offset + chunkSize);
+                peer.send(await chunk.arrayBuffer());
+                offset += chunkSize;
             }
-            document.getElementById('status').innerHTML = "File sent";
+            document.getElementById('status').innerHTML = "File sent successfully!";
         }
-
-        // Receive logic (basic)
-        let chunks = [];
-        peer?.on('data', d => {
-            if (typeof d === 'string') chunks = [];
-            else chunks.push(d);
-        });
     </script>
 </body>
 </html>
