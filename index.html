@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>100% Offline P2P File Transfer</title>
-    <!-- Embedded local bundle of simple-peer (or you can save simplepeer.min.js locally) -->
-    <!-- For complete offline capability, download simplepeer.min.js and place it in the same folder -->
-    <script src="simplepeer.min.js"></script>
+    <title>100% Native Offline P2P File Transfer</title>
     <style>
         body { font-family: monospace; background: #000; color: #0f0; padding: 20px; max-width: 650px; margin: auto; }
         textarea { width: 100%; height: 80px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px; box-sizing: border-box; margin-bottom: 5px; }
@@ -26,13 +23,13 @@
 </head>
 <body>
 
-    <h1>📦 100% Offline P2P File Transfer</h1>
+    <h1>📦 Native Offline P2P File Transfer</h1>
 
     <div class="disclaimer">
-        ⚠️ <strong>Important Guidelines & Disclaimers:</strong><br>
-        • <strong>Unknown Signals:</strong> Only accept and paste connection offers or replies from trusted sources.<br>
+        ⚠️ <strong>Important Guidelines:</strong><br>
+        • <strong>Unknown Signals:</strong> Only accept signals or connection strings from trusted sources.<br>
         • <strong>Ideal File Size:</strong> Best performance is achieved with files ranging from <strong>1 KB to 499 MB</strong>. Files &gt;2 GB risk browser memory limits.<br>
-        • <strong>Zero External Resources:</strong> This app runs entirely offline. Download <a href="https://unpkg.com/simple-peer@9/simplepeer.min.js" target="_blank" style="color:#38bdf8">simplepeer.min.js</a> once and save it in the same folder to use without internet.
+        • <strong>Zero Dependencies:</strong> This app uses built-in browser WebRTC APIs and requires no external libraries or internet connection.
     </div>
 
     <!-- TABS -->
@@ -44,13 +41,13 @@
     <!-- SENDER PANEL -->
     <div id="senderPanel" class="section active">
         <h3>Step 1: Create Connection Offer</h3>
-        <button onclick="startA()">Generate Offer</button>
+        <button onclick="startSender()">Generate Offer</button>
         <textarea id="offer" placeholder="Offer code string..."></textarea>
         <button class="btn-copy" onclick="copyToClipboard('offer')">📋 Copy Offer Code</button>
 
         <h3 style="margin-top:20px;">Step 3: Finalize Connection</h3>
-        <textarea id="replyFromB" placeholder="Paste Reply string from Receiver..."></textarea>
-        <button onclick="finalConnect()">Final Connect</button>
+        <textarea id="replyFromB" placeholder="Paste Answer string from Receiver..."></textarea>
+        <button onclick="acceptAnswer()">Final Connect</button>
 
         <hr style="border-color: #222; margin: 20px 0;">
 
@@ -61,18 +58,19 @@
 
     <!-- RECEIVER PANEL -->
     <div id="receiverPanel" class="section">
-        <h3>Step 2: Input Sender's Offer & Generate Reply</h3>
+        <h3>Step 2: Input Sender's Offer & Generate Answer</h3>
         <textarea id="offerFromA" placeholder="Paste Offer string from Sender..."></textarea>
-        <button onclick="startB()">Create Reply</button>
-        <textarea id="reply" placeholder="Reply code string..."></textarea>
-        <button class="btn-copy" onclick="copyToClipboard('reply')">📋 Copy Reply Code</button>
+        <button onclick="startReceiver()">Create Answer</button>
+        <textarea id="reply" placeholder="Answer code string..."></textarea>
+        <button class="btn-copy" onclick="copyToClipboard('reply')">📋 Copy Answer Code</button>
     </div>
 
     <div id="status">Status: Not connected</div>
     <progress id="progressBar" value="0" max="100"></progress>
 
     <script>
-        let peer = null;
+        let pc = null;
+        let dataChannel = null;
         let incomingMeta = null;
         let receivedBuffers = [];
         let receivedSize = 0;
@@ -100,63 +98,78 @@
             });
         }
 
-        function startA() {
-            if (typeof SimplePeer === 'undefined') {
-                alert("SimplePeer library not found locally! Please download simplepeer.min.js into the same folder.");
-                return;
-            }
-            peer = new SimplePeer({ initiator: true, trickle: false, highWaterMark: 1024 * 1024 });
-            bindPeerEvents();
+        function createPeerConnection() {
+            // Using public STUN servers for local/network candidates (works offline locally too)
+            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
         }
 
-        function startB() {
-            if (typeof SimplePeer === 'undefined') {
-                alert("SimplePeer library not found locally! Please download simplepeer.min.js into the same folder.");
-                return;
-            }
+        async function startSender() {
+            createPeerConnection();
+            
+            // Create data channel for sending files
+            dataChannel = pc.createDataChannel("file-transfer");
+            setupDataChannel();
+
+            pc.onicecandidate = (event) => {
+                if (!event.candidate) {
+                    // ICE gathering complete, show offer
+                    document.getElementById('offer').value = JSON.stringify(pc.localDescription);
+                    document.getElementById('status').innerText = "Status: Offer generated. Copy and send to receiver.";
+                }
+            };
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+        }
+
+        async function startReceiver() {
             try {
-                const data = JSON.parse(document.getElementById('offerFromA').value);
-                peer = new SimplePeer({ initiator: false, trickle: false, highWaterMark: 1024 * 1024 });
-                peer.signal(data);
-                bindPeerEvents();
-                document.getElementById('status').innerText = "Status: Offer loaded! Copy reply code below.";
+                const offerData = JSON.parse(document.getElementById('offerFromA').value);
+                createPeerConnection();
+
+                pc.ondatachannel = (event) => {
+                    dataChannel = event.channel;
+                    setupDataChannel();
+                };
+
+                pc.onicecandidate = (event) => {
+                    if (!event.candidate) {
+                        document.getElementById('reply').value = JSON.stringify(pc.localDescription);
+                        document.getElementById('status').innerText = "Status: Answer generated. Copy and send back to sender.";
+                    }
+                };
+
+                await pc.setRemoteDescription(new RTCSessionDescription(offerData));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+
             } catch (e) {
                 alert("Invalid offer code format!");
             }
         }
 
-        function finalConnect() {
+        async function acceptAnswer() {
             try {
-                const data = JSON.parse(document.getElementById('replyFromB').value);
-                peer.signal(data);
+                const answerData = JSON.parse(document.getElementById('replyFromB').value);
+                await pc.setRemoteDescription(new RTCSessionDescription(answerData));
+                document.getElementById('status').innerText = "Status: Finalizing connection...";
             } catch (e) {
-                alert("Invalid reply code format!");
+                alert("Invalid answer code format!");
             }
         }
 
-        function bindPeerEvents() {
-            peer.on('signal', data => {
-                const jsonStr = JSON.stringify(data);
-                if (peer.initiator) {
-                    document.getElementById('offer').value = jsonStr;
-                    document.getElementById('status').innerText = "Status: Offer generated. Copy and send to receiver.";
-                } else {
-                    document.getElementById('reply').value = jsonStr;
-                    document.getElementById('status').innerText = "Status: Reply generated. Copy and send back to sender.";
-                }
-            });
-
-            peer.on('connect', () => {
+        function setupDataChannel() {
+            dataChannel.onopen = () => {
                 document.getElementById('status').innerText = "Status: ✅ Connected successfully! Ready to transfer files.";
-            });
+            };
 
-            peer.on('error', err => {
-                document.getElementById('status').innerText = "Status: Connection Error (" + err.code + ")";
-            });
+            dataChannel.onclose = () => {
+                document.getElementById('status').innerText = "Status: Connection closed.";
+            };
 
-            peer.on('data', data => {
-                if (typeof data === 'string') {
-                    const msg = JSON.parse(data);
+            dataChannel.onmessage = (event) => {
+                if (typeof event.data === 'string') {
+                    const msg = JSON.parse(event.data);
                     if (msg.type === 'meta') {
                         incomingMeta = msg;
                         receivedBuffers = [];
@@ -164,8 +177,8 @@
                         document.getElementById('status').innerText = `Receiving: ${incomingMeta.name} (${(incomingMeta.size/1024/1024).toFixed(2)} MB)`;
                     }
                 } else {
-                    receivedBuffers.push(data);
-                    receivedSize += data.byteLength;
+                    receivedBuffers.push(event.data);
+                    receivedSize += event.data.byteLength;
 
                     const progress = document.getElementById('progressBar');
                     progress.max = incomingMeta.size;
@@ -183,11 +196,11 @@
                         document.getElementById('status').innerText = `Status: ${incomingMeta.name} downloaded successfully!`;
                     }
                 }
-            });
+            };
         }
 
         async function sendFile() {
-            if (!peer || !peer.connected) return alert("Not connected yet!");
+            if (!dataChannel || dataChannel.readyState !== "open") return alert("Not connected yet!");
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             if (!file) return alert("Select a file first.");
@@ -199,7 +212,7 @@
             }
 
             document.getElementById('status').innerText = `Sending metadata...`;
-            peer.send(JSON.stringify({ type: 'meta', name: file.name, size: file.size }));
+            dataChannel.send(JSON.stringify({ type: 'meta', name: file.name, size: file.size }));
 
             const chunkSize = 64 * 1024;
             let offset = 0;
@@ -212,11 +225,11 @@
                 const chunk = file.slice(offset, offset + chunkSize);
                 const buffer = await chunk.arrayBuffer();
                 
-                while (peer._channel.bufferedAmount > 1024 * 1024) {
+                while (dataChannel.bufferedAmount > 1024 * 1024) {
                     await new Promise(resolve => setTimeout(resolve, 50));
                 }
 
-                peer.send(buffer);
+                dataChannel.send(buffer);
                 offset += chunk.size;
                 progress.value = offset;
             }
