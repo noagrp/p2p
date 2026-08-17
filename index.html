@@ -2,98 +2,215 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Simple P2P - Copy Paste</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline P2P File Transfer</title>
     <script src="https://unpkg.com/simple-peer@9/simplepeer.min.js"></script>
     <style>
-        body { font-family: monospace; background: #000; color: #0f0; padding: 20px; }
-        textarea { width: 100%; height: 140px; background: #111; color: #0f0; border: 2px solid #0f0; padding: 10px; }
-        button { padding: 15px 25px; margin: 8px 0; background: #111; color: #0f0; border: 2px solid #0f0; font-size: 17px; }
+        body { font-family: monospace; background: #000; color: #0f0; padding: 20px; max-width: 700px; margin: auto; }
+        textarea { width: 100%; height: 80px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px; box-sizing: border-box; margin-bottom: 8px; }
+        button { padding: 12px 20px; margin: 5px 0; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; width: 100%; font-family: monospace; font-size: 14px; }
         button:hover { background: #0f0; color: #000; }
-        #status { padding: 20px; background: #222; font-size: 18px; margin: 15px 0; min-height: 50px; }
+        .btn-copy { background: #052605; border: 1px dashed #0f0; margin-bottom: 10px; }
+        .btn-copy:hover { background: #0f0; color: #000; }
+        #status { padding: 12px; background: #111; border: 1px solid #0f0; margin: 15px 0; }
+        progress { width: 100%; height: 25px; accent-color: #0f0; }
+        .disclaimer { border: 1px dashed #f39c12; background: #1a1500; color: #f1c40f; padding: 12px; margin-bottom: 20px; font-size: 13px; line-height: 1.4; }
+        .section { border: 1px solid #222; padding: 15px; margin-bottom: 15px; background: #080808; display: none; }
+        .section.active { display: block; }
+        .tabs { display: flex; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 15px; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .tab-btn.active { background: #0f0; color: #000; }
+        h3 { margin-top: 0; color: #38bdf8; }
     </style>
 </head>
 <body>
-    <h1>Simple P2P File Transfer</h1>
 
-    <h3>1. Device A - Create Offer</h3>
-    <button onclick="startA()">Create Offer</button><br><br>
-    <textarea id="offer" placeholder="Copy this to Device B"></textarea>
+    <h1>📦 Offline P2P File Transfer</h1>
 
-    <h3>2. Device B</h3>
-    <textarea id="offerFromA" placeholder="Paste from Device A"></textarea><br>
-    <button onclick="startB()">Create Reply</button><br><br>
-    <textarea id="reply" placeholder="Copy this back to Device A"></textarea>
+    <!-- Disclaimer Note -->
+    <div class="disclaimer">
+        ⚠️ <strong>Important Guidelines:</strong><br>
+        • <strong>Unknown Signals:</strong> Only accept and paste connection offers or replies from trusted sources.<br>
+        • <strong>Ideal File Size:</strong> Best performance is achieved with files ranging from <strong>1 KB to 499 MB</strong>. Files &gt;2 GB risk browser memory limits.
+    </div>
 
-    <h3>3. Device A - Final Step</h3>
-    <textarea id="replyFromB" placeholder="Paste reply from Device B"></textarea><br>
-    <button onclick="finalConnect()">Final Connect</button>
+    <!-- TABS -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('sender')">Sender Mode</button>
+        <button class="tab-btn" onclick="switchTab('receiver')">Receiver Mode</button>
+    </div>
 
-    <h3>Send File (After Connected)</h3>
-    <input type="file" id="fileInput"><br><br>
-    <button onclick="sendFile()">Send File</button>
+    <!-- SENDER PANEL -->
+    <div id="senderPanel" class="section active">
+        <h3>Step 1: Create Offer (Sender)</h3>
+        <button onclick="startA()">Create Offer</button>
+        <textarea id="offer" placeholder="Offer code generated here..."></textarea>
+        <button class="btn-copy" onclick="copyToClipboard('offer')">📋 Copy Offer Code</button>
+
+        <h3>Step 3: Finalize Connection</h3>
+        <textarea id="replyFromB" placeholder="Paste Reply from Receiver here..."></textarea>
+        <button onclick="finalConnect()">Final Connect</button>
+
+        <hr style="border-color: #222; margin: 20px 0;">
+
+        <h3>Send File (After Connected)</h3>
+        <input type="file" id="fileInput"><br><br>
+        <button onclick="sendFile()">Send File</button>
+    </div>
+
+    <!-- RECEIVER PANEL -->
+    <div id="receiverPanel" class="section">
+        <h3>Step 2: Paste Offer & Create Reply (Receiver)</h3>
+        <textarea id="offerFromA" placeholder="Paste Offer from Sender here..."></textarea>
+        <button onclick="startB()">Create Reply</button>
+        <textarea id="reply" placeholder="Reply code generated here..."></textarea>
+        <button class="btn-copy" onclick="copyToClipboard('reply')">📋 Copy Reply Code</button>
+    </div>
 
     <div id="status">Status: Not connected</div>
+    <progress id="progressBar" value="0" max="100"></progress>
 
     <script>
         let peer = null;
+        let incomingMeta = null;
+        let receivedBuffers = [];
+        let receivedSize = 0;
+
+        function switchTab(mode) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+
+            if (mode === 'sender') {
+                document.querySelector('.tabs button:nth-child(1)').classList.add('active');
+                document.getElementById('senderPanel').classList.add('active');
+            } else {
+                document.querySelector('.tabs button:nth-child(2)').classList.add('active');
+                document.getElementById('receiverPanel').classList.add('active');
+            }
+        }
+
+        function copyToClipboard(elementId) {
+            const textarea = document.getElementById(elementId);
+            if (!textarea.value) {
+                return alert("Nothing to copy yet!");
+            }
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                alert("Copied to clipboard!");
+            }).catch(err => {
+                alert("Failed to copy text.");
+            });
+        }
 
         function startA() {
-            peer = new SimplePeer({ initiator: true, trickle: false });
-            
-            peer.on('signal', data => {
-                document.getElementById('offer').value = JSON.stringify(data);
-            });
-
-            peer.on('connect', () => {
-                document.getElementById('status').innerHTML = "✅ SUCCESSFULLY CONNECTED!";
-                document.getElementById('status').style.color = "#0f0";
-            });
-
-            setupReceive();
+            peer = new SimplePeer({ initiator: true, trickle: false, highWaterMark: 1024 * 1024 });
+            bindPeerEvents();
         }
 
         function startB() {
-            const data = JSON.parse(document.getElementById('offerFromA').value);
-            peer = new SimplePeer({ initiator: false, trickle: false });
-            peer.signal(data);
-
-            peer.on('signal', data => {
-                document.getElementById('reply').value = JSON.stringify(data);
-            });
-
-            setupReceive();
+            try {
+                const data = JSON.parse(document.getElementById('offerFromA').value);
+                peer = new SimplePeer({ initiator: false, trickle: false, highWaterMark: 1024 * 1024 });
+                peer.signal(data);
+                bindPeerEvents();
+            } catch (e) {
+                alert("Invalid offer code format!");
+            }
         }
 
         function finalConnect() {
-            const data = JSON.parse(document.getElementById('replyFromB').value);
-            peer.signal(data);
+            try {
+                const data = JSON.parse(document.getElementById('replyFromB').value);
+                peer.signal(data);
+            } catch (e) {
+                alert("Invalid reply code format!");
+            }
         }
 
-        function setupReceive() {
-            peer.on('data', (data) => {
-                document.getElementById('status').innerHTML += "<br>Data received";
+        function bindPeerEvents() {
+            peer.on('signal', data => {
+                if (peer.initiator) {
+                    document.getElementById('offer').value = JSON.stringify(data);
+                } else {
+                    document.getElementById('reply').value = JSON.stringify(data);
+                }
+            });
+
+            peer.on('connect', () => {
+                document.getElementById('status').innerText = "Status: ✅ Connected! Ready to transfer files.";
+            });
+
+            peer.on('error', err => {
+                document.getElementById('status').innerText = "Status: Connection Error (" + err.code + ")";
+            });
+
+            peer.on('data', data => {
+                if (typeof data === 'string') {
+                    const msg = JSON.parse(data);
+                    if (msg.type === 'meta') {
+                        incomingMeta = msg;
+                        receivedBuffers = [];
+                        receivedSize = 0;
+                        document.getElementById('status').innerText = `Receiving: ${incomingMeta.name} (${(incomingMeta.size/1024/1024).toFixed(2)} MB)`;
+                    }
+                } else {
+                    receivedBuffers.push(data);
+                    receivedSize += data.byteLength;
+
+                    const progress = document.getElementById('progressBar');
+                    progress.max = incomingMeta.size;
+                    progress.value = receivedSize;
+
+                    if (receivedSize >= incomingMeta.size) {
+                        document.getElementById('status').innerText = "Status: File received successfully! Saving...";
+                        const blob = new Blob(receivedBuffers);
+                        const url = URL.createObjectURL(blob);
+                        
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = incomingMeta.name;
+                        a.click();
+                        document.getElementById('status').innerText = `Status: ${incomingMeta.name} downloaded successfully!`;
+                    }
+                }
             });
         }
 
         async function sendFile() {
-            if (!peer || !peer.connected) {
-                alert("Not connected yet! Complete all 3 steps first.");
-                return;
+            if (!peer || !peer.connected) return alert("Not connected yet!");
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return alert("Select a file first.");
+
+            if (file.size > 500 * 1024 * 1024) {
+                if (!confirm("This file exceeds the recommended 499MB limit. Proceed anyway?")) {
+                    return;
+                }
             }
 
-            const file = document.getElementById('fileInput').files[0];
-            if (!file) return alert("No file selected");
+            document.getElementById('status').innerText = `Sending metadata...`;
+            peer.send(JSON.stringify({ type: 'meta', name: file.name, size: file.size }));
 
-            peer.send(JSON.stringify({name: file.name, size: file.size}));
-
-            const chunkSize = 16 * 1024;
+            const chunkSize = 64 * 1024;
             let offset = 0;
+            const progress = document.getElementById('progressBar');
+            progress.max = file.size;
+
+            document.getElementById('status').innerText = `Sending file: ${file.name}`;
+
             while (offset < file.size) {
                 const chunk = file.slice(offset, offset + chunkSize);
-                peer.send(await chunk.arrayBuffer());
-                offset += chunkSize;
+                const buffer = await chunk.arrayBuffer();
+                
+                while (peer._channel.bufferedAmount > 1024 * 1024) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+
+                peer.send(buffer);
+                offset += chunk.size;
+                progress.value = offset;
             }
-            document.getElementById('status').innerHTML = "File sent successfully!";
+
+            document.getElementById('status').innerText = "Status: ✅ File sent successfully!";
         }
     </script>
 </body>
