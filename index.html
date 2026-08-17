@@ -3,39 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>100% Native Offline P2P File Transfer</title>
+    <title>P2P Chat & File Transfer (3 Tabs)</title>
     <style>
         body { font-family: monospace; background: #000; color: #0f0; padding: 20px; max-width: 650px; margin: auto; }
-        textarea { width: 100%; height: 80px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px; box-sizing: border-box; margin-bottom: 5px; }
+        textarea { width: 100%; height: 70px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px; box-sizing: border-box; margin-bottom: 5px; font-size: 11px; }
         button { padding: 12px; margin: 5px 0; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; width: 100%; font-family: monospace; font-size: 14px; }
         button:hover { background: #0f0; color: #000; }
         .btn-copy { background: #052605; border: 1px dashed #0f0; }
-        #status { padding: 12px; background: #111; border: 1px solid #0f0; margin: 15px 0; }
-        progress { width: 100%; height: 25px; accent-color: #0f0; }
-        .disclaimer { border: 1px dashed #f39c12; background: #1a1500; color: #f1c40f; padding: 12px; margin-bottom: 20px; font-size: 13px; line-height: 1.4; }
+        #status { padding: 10px; background: #111; border: 1px solid #0f0; margin: 15px 0; font-size: 14px; text-align: center; }
+        progress { width: 100%; height: 20px; accent-color: #0f0; }
+        .disclaimer { border: 1px dashed #f39c12; background: #1a1500; color: #f1c40f; padding: 10px; margin-bottom: 15px; font-size: 12px; }
         .section { border: 1px solid #222; padding: 15px; margin-bottom: 15px; background: #080808; display: none; }
         .section.active { display: block; }
+        
+        /* 3-Tab layout */
         .tabs { display: flex; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 15px; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .tab-btn { flex: 1; padding: 12px; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; font-size: 14px; font-weight: bold; text-align: center; }
         .tab-btn.active { background: #0f0; color: #000; }
-        h3 { margin-top: 0; color: #38bdf8; }
+        .tab-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        h3 { margin-top: 0; color: #38bdf8; font-size: 16px; }
+        
+        /* Chat box styling */
+        #chatBox { height: 220px; background: #111; border: 1px solid #0f0; padding: 10px; overflow-y: scroll; margin-bottom: 10px; font-size: 13px; }
+        .chat-msg { margin-bottom: 5px; }
+        .chat-msg.me { color: #38bdf8; }
+        .chat-msg.peer { color: #0f0; }
+        .chat-input-row { display: flex; gap: 5px; }
+        .chat-input-row input { flex: 1; background: #111; color: #0f0; border: 1px solid #0f0; padding: 10px; font-family: monospace; }
+        .chat-input-row button { width: 80px; margin: 0; }
     </style>
 </head>
 <body>
 
-    <h1>📦 Native Offline P2P File Transfer</h1>
+    <h1>💬📦 P2P Chat & File Share</h1>
 
     <div class="disclaimer">
-        ⚠️ <strong>Important Guidelines:</strong><br>
-        • <strong>Unknown Signals:</strong> Only accept signals or connection strings from trusted sources.<br>
-        • <strong>Ideal File Size:</strong> Best performance is achieved with files ranging from <strong>1 KB to 499 MB</strong>. Files &gt;2 GB risk browser memory limits.<br>
-        • <strong>Zero Dependencies:</strong> This app uses built-in browser WebRTC APIs and requires no external libraries or internet connection.
+        ⚠️ <strong>Tip:</strong> Complete connection setup in <strong>Sender</strong> or <strong>Receiver</strong> tab. Once connected, the <strong>Chat & File</strong> tab will unlock automatically!
     </div>
 
-    <!-- TABS -->
+    <!-- 3 TABS -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('sender')">Sender Mode</button>
-        <button class="tab-btn" onclick="switchTab('receiver')">Receiver Mode</button>
+        <button class="tab-btn active" onclick="switchTab('sender')">1. Sender</button>
+        <button class="tab-btn" onclick="switchTab('receiver')">2. Receiver</button>
+        <button class="tab-btn" id="chatTabBtn" onclick="switchTab('chat')" disabled>3. Chat & Files 🔒</button>
     </div>
 
     <!-- SENDER PANEL -->
@@ -45,15 +56,9 @@
         <textarea id="offer" placeholder="Offer code string..."></textarea>
         <button class="btn-copy" onclick="copyToClipboard('offer')">📋 Copy Offer Code</button>
 
-        <h3 style="margin-top:20px;">Step 3: Finalize Connection</h3>
+        <h3 style="margin-top:15px;">Step 3: Finalize Connection</h3>
         <textarea id="replyFromB" placeholder="Paste Answer string from Receiver..."></textarea>
         <button onclick="acceptAnswer()">Final Connect</button>
-
-        <hr style="border-color: #222; margin: 20px 0;">
-
-        <h3>Send File (After Connected)</h3>
-        <input type="file" id="fileInput"><br><br>
-        <button onclick="sendFile()">Send File</button>
     </div>
 
     <!-- RECEIVER PANEL -->
@@ -65,8 +70,22 @@
         <button class="btn-copy" onclick="copyToClipboard('reply')">📋 Copy Answer Code</button>
     </div>
 
+    <!-- CHAT & FILE PANEL -->
+    <div id="chatPanel" class="section">
+        <h3>Secure P2P Chat</h3>
+        <div id="chatBox"></div>
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+            <button onclick="sendChatMessage()">Send</button>
+        </div>
+
+        <h3 style="margin-top:20px;">Send File (Ideal: 1KB ~ 499MB)</h3>
+        <input type="file" id="fileInput"><br><br>
+        <button onclick="sendFile()">Send File</button>
+        <progress id="progressBar" value="0" max="100" style="margin-top:8px; display:none;"></progress>
+    </div>
+
     <div id="status">Status: Not connected</div>
-    <progress id="progressBar" value="0" max="100"></progress>
 
     <script>
         let pc = null;
@@ -76,15 +95,20 @@
         let receivedSize = 0;
 
         function switchTab(mode) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (!btn.disabled || btn.id !== 'chatTabBtn') btn.classList.remove('active');
+            });
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
 
             if (mode === 'sender') {
                 document.querySelector('.tabs button:nth-child(1)').classList.add('active');
                 document.getElementById('senderPanel').classList.add('active');
-            } else {
+            } else if (mode === 'receiver') {
                 document.querySelector('.tabs button:nth-child(2)').classList.add('active');
                 document.getElementById('receiverPanel').classList.add('active');
+            } else if (mode === 'chat') {
+                document.getElementById('chatTabBtn').classList.add('active');
+                document.getElementById('chatPanel').classList.add('active');
             }
         }
 
@@ -93,26 +117,26 @@
             if (!textarea.value) return alert("Nothing to copy yet!");
             navigator.clipboard.writeText(textarea.value).then(() => {
                 alert("Copied to clipboard!");
-            }).catch(() => {
-                alert("Failed to copy text.");
             });
         }
 
+        function parseCleanJSON(text) {
+            if (!text) throw new Error("Empty input");
+            const cleaned = text.replace(/(\r\n|\n|\r)/gm, "").trim();
+            return JSON.parse(cleaned);
+        }
+
         function createPeerConnection() {
-            // Using public STUN servers for local/network candidates (works offline locally too)
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
         }
 
         async function startSender() {
             createPeerConnection();
-            
-            // Create data channel for sending files
-            dataChannel = pc.createDataChannel("file-transfer");
+            dataChannel = pc.createDataChannel("p2p-channel");
             setupDataChannel();
 
             pc.onicecandidate = (event) => {
                 if (!event.candidate) {
-                    // ICE gathering complete, show offer
                     document.getElementById('offer').value = JSON.stringify(pc.localDescription);
                     document.getElementById('status').innerText = "Status: Offer generated. Copy and send to receiver.";
                 }
@@ -124,7 +148,9 @@
 
         async function startReceiver() {
             try {
-                const offerData = JSON.parse(document.getElementById('offerFromA').value);
+                const rawText = document.getElementById('offerFromA').value;
+                const offerData = parseCleanJSON(rawText);
+                
                 createPeerConnection();
 
                 pc.ondatachannel = (event) => {
@@ -144,38 +170,60 @@
                 await pc.setLocalDescription(answer);
 
             } catch (e) {
-                alert("Invalid offer code format!");
+                alert("Invalid code format! Make sure you copied the entire offer string cleanly.");
             }
         }
 
         async function acceptAnswer() {
             try {
-                const answerData = JSON.parse(document.getElementById('replyFromB').value);
+                const rawText = document.getElementById('replyFromB').value;
+                const answerData = parseCleanJSON(rawText);
+                
                 await pc.setRemoteDescription(new RTCSessionDescription(answerData));
                 document.getElementById('status').innerText = "Status: Finalizing connection...";
             } catch (e) {
-                alert("Invalid answer code format!");
+                alert("Invalid code format! Make sure you copied the entire answer string cleanly.");
             }
         }
 
         function setupDataChannel() {
             dataChannel.onopen = () => {
-                document.getElementById('status').innerText = "Status: ✅ Connected successfully! Ready to transfer files.";
+                document.getElementById('status').innerText = "Status: ✅ Connected! Tab 3 unlocked.";
+                
+                // Unlock Chat & File Tab
+                const chatBtn = document.getElementById('chatTabBtn');
+                chatBtn.disabled = false;
+                chatBtn.innerText = "3. Chat & Files 🟢";
+                
+                // Automatically switch to chat tab upon successful connection
+                switchTab('chat');
             };
 
             dataChannel.onclose = () => {
                 document.getElementById('status').innerText = "Status: Connection closed.";
+                const chatBtn = document.getElementById('chatTabBtn');
+                chatBtn.disabled = true;
+                chatBtn.innerText = "3. Chat & Files 🔒";
             };
 
             dataChannel.onmessage = (event) => {
                 if (typeof event.data === 'string') {
-                    const msg = JSON.parse(event.data);
-                    if (msg.type === 'meta') {
-                        incomingMeta = msg;
-                        receivedBuffers = [];
-                        receivedSize = 0;
-                        document.getElementById('status').innerText = `Receiving: ${incomingMeta.name} (${(incomingMeta.size/1024/1024).toFixed(2)} MB)`;
-                    }
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.type === 'chat') {
+                            appendChat("Peer", msg.text, "peer");
+                            return;
+                        } else if (msg.type === 'meta') {
+                            incomingMeta = msg;
+                            receivedBuffers = [];
+                            receivedSize = 0;
+                            document.getElementById('progressBar').style.display = 'block';
+                            appendChat("System", `📥 Incoming file: ${incomingMeta.name} (${(incomingMeta.size/1024/1024).toFixed(2)} MB)`, "peer");
+                            return;
+                        }
+                    } catch (e) {}
+                    
+                    appendChat("Peer", event.data, "peer");
                 } else {
                     receivedBuffers.push(event.data);
                     receivedSize += event.data.byteLength;
@@ -185,7 +233,7 @@
                     progress.value = receivedSize;
 
                     if (receivedSize >= incomingMeta.size) {
-                        document.getElementById('status').innerText = "Status: File received successfully! Saving...";
+                        appendChat("System", `✅ File received successfully! Saving...`, "peer");
                         const blob = new Blob(receivedBuffers);
                         const url = URL.createObjectURL(blob);
                         
@@ -193,10 +241,28 @@
                         a.href = url;
                         a.download = incomingMeta.name;
                         a.click();
-                        document.getElementById('status').innerText = `Status: ${incomingMeta.name} downloaded successfully!`;
                     }
                 }
             };
+        }
+
+        function appendChat(sender, text, className) {
+            const chatBox = document.getElementById('chatBox');
+            const div = document.createElement('div');
+            div.className = `chat-msg ${className}`;
+            div.innerText = `[${sender}]: ${text}`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text || !dataChannel || dataChannel.readyState !== "open") return;
+
+            dataChannel.send(JSON.stringify({ type: 'chat', text: text }));
+            appendChat("You", text, "me");
+            input.value = "";
         }
 
         async function sendFile() {
@@ -211,15 +277,14 @@
                 }
             }
 
-            document.getElementById('status').innerText = `Sending metadata...`;
+            appendChat("System", `🚀 Sending file: ${file.name}...`, "me");
             dataChannel.send(JSON.stringify({ type: 'meta', name: file.name, size: file.size }));
 
             const chunkSize = 64 * 1024;
             let offset = 0;
             const progress = document.getElementById('progressBar');
+            progress.style.display = 'block';
             progress.max = file.size;
-
-            document.getElementById('status').innerText = `Sending file: ${file.name}`;
 
             while (offset < file.size) {
                 const chunk = file.slice(offset, offset + chunkSize);
@@ -234,7 +299,7 @@
                 progress.value = offset;
             }
 
-            document.getElementById('status').innerText = "Status: ✅ File sent successfully!";
+            appendChat("System", `✅ File sent successfully!`, "me");
         }
     </script>
 </body>
