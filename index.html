@@ -3,19 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P File Transfer (Text & QR / Offline)</title>
-    <!-- Simple-Peer for WebRTC -->
-    <script src="https://unpkg.com/simple-peer@9/simplepeer.min.js"></script>
-    <!-- QR Code Generator & Scanner Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <title>100% Offline P2P File Transfer</title>
+    <!-- Embedded local bundle of simple-peer (or you can save simplepeer.min.js locally) -->
+    <!-- For complete offline capability, download simplepeer.min.js and place it in the same folder -->
+    <script src="simplepeer.min.js"></script>
     <style>
         body { font-family: monospace; background: #000; color: #0f0; padding: 20px; max-width: 650px; margin: auto; }
-        textarea { width: 100%; height: 75px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px; box-sizing: border-box; margin-bottom: 5px; }
-        button { padding: 10px 15px; margin: 5px 0; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; width: 100%; font-family: monospace; font-size: 14px; }
+        textarea { width: 100%; height: 80px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px; box-sizing: border-box; margin-bottom: 5px; }
+        button { padding: 12px; margin: 5px 0; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; width: 100%; font-family: monospace; font-size: 14px; }
         button:hover { background: #0f0; color: #000; }
         .btn-copy { background: #052605; border: 1px dashed #0f0; }
-        .btn-copy:hover { background: #0f0; color: #000; }
         #status { padding: 12px; background: #111; border: 1px solid #0f0; margin: 15px 0; }
         progress { width: 100%; height: 25px; accent-color: #0f0; }
         .disclaimer { border: 1px dashed #f39c12; background: #1a1500; color: #f1c40f; padding: 12px; margin-bottom: 20px; font-size: 13px; line-height: 1.4; }
@@ -24,21 +21,18 @@
         .tabs { display: flex; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 15px; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; font-size: 16px; font-weight: bold; }
         .tab-btn.active { background: #0f0; color: #000; }
-        .qr-box { text-align: center; margin: 10px 0; background: #fff; padding: 10px; display: inline-block; }
-        video { width: 100%; max-height: 220px; background: #111; border: 1px solid #0f0; margin-top: 8px; }
         h3 { margin-top: 0; color: #38bdf8; }
-        .method-group { border: 1px solid #1a1a1a; padding: 10px; margin-top: 10px; background: #0c0c0c; }
     </style>
 </head>
 <body>
 
-    <h1>📦 P2P File Transfer (Text & QR)</h1>
+    <h1>📦 100% Offline P2P File Transfer</h1>
 
-    <!-- Disclaimer Note -->
     <div class="disclaimer">
-        ⚠️ <strong>Important Guidelines:</strong><br>
-        • <strong>Unknown Signals:</strong> Only accept signals or scan QR codes from trusted sources.<br>
-        • <strong>Ideal File Size:</strong> Best performance is achieved with files ranging from <strong>1 KB to 499 MB</strong>. Files &gt;2 GB risk browser memory limits.
+        ⚠️ <strong>Important Guidelines & Disclaimers:</strong><br>
+        • <strong>Unknown Signals:</strong> Only accept and paste connection offers or replies from trusted sources.<br>
+        • <strong>Ideal File Size:</strong> Best performance is achieved with files ranging from <strong>1 KB to 499 MB</strong>. Files &gt;2 GB risk browser memory limits.<br>
+        • <strong>Zero External Resources:</strong> This app runs entirely offline. Download <a href="https://unpkg.com/simple-peer@9/simplepeer.min.js" target="_blank" style="color:#38bdf8">simplepeer.min.js</a> once and save it in the same folder to use without internet.
     </div>
 
     <!-- TABS -->
@@ -51,31 +45,12 @@
     <div id="senderPanel" class="section active">
         <h3>Step 1: Create Connection Offer</h3>
         <button onclick="startA()">Generate Offer</button>
-        
-        <div class="method-group">
-            <label>Option A: Text String</label>
-            <textarea id="offer" placeholder="Offer code string..."></textarea>
-            <button class="btn-copy" onclick="copyToClipboard('offer')">📋 Copy Offer Code</button>
-        </div>
+        <textarea id="offer" placeholder="Offer code string..."></textarea>
+        <button class="btn-copy" onclick="copyToClipboard('offer')">📋 Copy Offer Code</button>
 
-        <div class="method-group">
-            <label>Option B: QR Code</label>
-            <div id="senderQRContainer" style="text-align:center;"></div>
-        </div>
-
-        <h3 style="margin-top:20px;">Step 3: Receive Connection Reply</h3>
-        
-        <div class="method-group">
-            <label>Option A: Paste Text Reply</label>
-            <textarea id="replyFromB" placeholder="Paste Reply string from Receiver..."></textarea>
-            <button onclick="finalConnect()">Final Connect (Text)</button>
-        </div>
-
-        <div class="method-group">
-            <label>Option B: Scan Reply QR</label>
-            <button onclick="startScanner('senderScanVideo', handleReceiverQR)">📷 Open Camera to Scan Reply QR</button>
-            <video id="senderScanVideo" autoplay playsinline style="display:none;"></video>
-        </div>
+        <h3 style="margin-top:20px;">Step 3: Finalize Connection</h3>
+        <textarea id="replyFromB" placeholder="Paste Reply string from Receiver..."></textarea>
+        <button onclick="finalConnect()">Final Connect</button>
 
         <hr style="border-color: #222; margin: 20px 0;">
 
@@ -86,32 +61,11 @@
 
     <!-- RECEIVER PANEL -->
     <div id="receiverPanel" class="section">
-        <h3>Step 2: Input Sender's Offer</h3>
-        
-        <div class="method-group">
-            <label>Option A: Paste Text Offer</label>
-            <textarea id="offerFromA" placeholder="Paste Offer string from Sender..."></textarea>
-            <button onclick="startB()">Create Reply (Text)</button>
-        </div>
-
-        <div class="method-group">
-            <label>Option B: Scan Offer QR</label>
-            <button onclick="startScanner('receiverScanVideo', handleOfferQR)">📷 Open Camera to Scan Offer QR</button>
-            <video id="receiverScanVideo" autoplay playsinline style="display:none;"></video>
-        </div>
-
-        <h3 style="margin-top:20px;">Send Reply Back to Sender</h3>
-        
-        <div class="method-group">
-            <label>Option A: Text String</label>
-            <textarea id="reply" placeholder="Reply code string..."></textarea>
-            <button class="btn-copy" onclick="copyToClipboard('reply')">📋 Copy Reply Code</button>
-        </div>
-
-        <div class="method-group">
-            <label>Option B: QR Code</label>
-            <div id="receiverQRContainer" style="text-align:center;"></div>
-        </div>
+        <h3>Step 2: Input Sender's Offer & Generate Reply</h3>
+        <textarea id="offerFromA" placeholder="Paste Offer string from Sender..."></textarea>
+        <button onclick="startB()">Create Reply</button>
+        <textarea id="reply" placeholder="Reply code string..."></textarea>
+        <button class="btn-copy" onclick="copyToClipboard('reply')">📋 Copy Reply Code</button>
     </div>
 
     <div id="status">Status: Not connected</div>
@@ -122,10 +76,8 @@
         let incomingMeta = null;
         let receivedBuffers = [];
         let receivedSize = 0;
-        let scanningStream = null;
 
         function switchTab(mode) {
-            stopCamera();
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
 
@@ -135,13 +87,6 @@
             } else {
                 document.querySelector('.tabs button:nth-child(2)').classList.add('active');
                 document.getElementById('receiverPanel').classList.add('active');
-            }
-        }
-
-        function stopCamera() {
-            if (scanningStream) {
-                scanningStream.getTracks().forEach(track => track.stop());
-                scanningStream = null;
             }
         }
 
@@ -155,86 +100,28 @@
             });
         }
 
-        function renderQR(containerId, text) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = "";
-            try {
-                const qr = qrcode(0, 'L');
-                qr.addData(text);
-                qr.make();
-                const div = document.createElement('div');
-                div.className = 'qr-box';
-                div.innerHTML = qr.createSvgTag({scalable: true});
-                container.appendChild(div);
-            } catch (e) {
-                container.innerText = "Error generating QR code (Data too large). Use text copy instead.";
-            }
-        }
-
-        function startScanner(videoId, onScanSuccess) {
-            stopCamera();
-            const video = document.getElementById(videoId);
-            video.style.display = 'block';
-
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-                .then(stream => {
-                    scanningStream = stream;
-                    video.srcObject = stream;
-                    video.play();
-                    requestAnimationFrame(() => scanTick(video, onScanSuccess));
-                })
-                .catch(err => {
-                    alert("Camera access denied or unavailable: " + err.message);
-                });
-        }
-
-        function scanTick(video, onScanSuccess) {
-            if (!scanningStream) return;
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                const canvas = document.createElement('canvas');
-                canvas.height = video.videoHeight;
-                canvas.width = video.videoWidth;
-                const canvasContext = canvas.getContext('2d');
-                canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
-                
-                const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
-                if (code) {
-                    stopCamera();
-                    video.style.display = 'none';
-                    onScanSuccess(code.data);
-                    return;
-                }
-            }
-            requestAnimationFrame(() => scanTick(video, onScanSuccess));
-        }
-
         function startA() {
+            if (typeof SimplePeer === 'undefined') {
+                alert("SimplePeer library not found locally! Please download simplepeer.min.js into the same folder.");
+                return;
+            }
             peer = new SimplePeer({ initiator: true, trickle: false, highWaterMark: 1024 * 1024 });
             bindPeerEvents();
         }
 
         function startB() {
+            if (typeof SimplePeer === 'undefined') {
+                alert("SimplePeer library not found locally! Please download simplepeer.min.js into the same folder.");
+                return;
+            }
             try {
                 const data = JSON.parse(document.getElementById('offerFromA').value);
                 peer = new SimplePeer({ initiator: false, trickle: false, highWaterMark: 1024 * 1024 });
                 peer.signal(data);
                 bindPeerEvents();
-                document.getElementById('status').innerText = "Status: Offer loaded! Generate Reply string or QR below.";
+                document.getElementById('status').innerText = "Status: Offer loaded! Copy reply code below.";
             } catch (e) {
                 alert("Invalid offer code format!");
-            }
-        }
-
-        function handleOfferQR(qrText) {
-            try {
-                const data = JSON.parse(qrText);
-                peer = new SimplePeer({ initiator: false, trickle: false, highWaterMark: 1024 * 1024 });
-                peer.signal(data);
-                bindPeerEvents();
-                document.getElementById('status').innerText = "Status: Offer QR scanned! Generating Reply...";
-            } catch (e) {
-                alert("Invalid QR code scanned.");
             }
         }
 
@@ -247,32 +134,19 @@
             }
         }
 
-        function handleReceiverQR(qrText) {
-            try {
-                const data = JSON.parse(qrText);
-                peer.signal(data);
-                document.getElementById('status').innerText = "Status: Reply QR scanned! Finalizing connection...";
-            } catch (e) {
-                alert("Invalid reply QR code scanned.");
-            }
-        }
-
         function bindPeerEvents() {
             peer.on('signal', data => {
                 const jsonStr = JSON.stringify(data);
                 if (peer.initiator) {
                     document.getElementById('offer').value = jsonStr;
-                    renderQR('senderQRContainer', jsonStr);
-                    document.getElementById('status').innerText = "Status: Offer generated (via Text or QR). Share with receiver.";
+                    document.getElementById('status').innerText = "Status: Offer generated. Copy and send to receiver.";
                 } else {
                     document.getElementById('reply').value = jsonStr;
-                    renderQR('receiverQRContainer', jsonStr);
-                    document.getElementById('status').innerText = "Status: Reply generated (via Text or QR). Send back to sender.";
+                    document.getElementById('status').innerText = "Status: Reply generated. Copy and send back to sender.";
                 }
             });
 
             peer.on('connect', () => {
-                stopCamera();
                 document.getElementById('status').innerText = "Status: ✅ Connected successfully! Ready to transfer files.";
             });
 
