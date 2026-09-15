@@ -1,372 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure P2P Chat & File Share</title>
-    <style>
-        body { font-family: monospace; background: #000; color: #0f0; padding: 20px; max-width: 650px; margin: auto; }
-        textarea { width: 100%; height: 60px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px; box-sizing: border-box; margin-bottom: 5px; font-size: 11px; }
-        button { padding: 10px; margin: 5px 0; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; width: 100%; font-family: monospace; font-size: 14px; }
-        button:hover { background: #0f0; color: #000; }
-        .btn-row { display: flex; gap: 5px; margin-bottom: 10px; }
-        .btn-row button { flex: 1; }
-        .btn-copy { background: #052605; border: 1px dashed #0f0; }
-        .btn-txt { background: #022026; border: 1px dashed #38bdf8; color: #38bdf8; }
-        #status { padding: 10px; background: #111; border: 1px solid #0f0; margin: 15px 0; font-size: 14px; text-align: center; }
-        progress { width: 100%; height: 20px; accent-color: #0f0; }
-        .disclaimer { border: 1px dashed #f39c12; background: #1a1500; color: #f1c40f; padding: 10px; margin-bottom: 15px; font-size: 12px; }
-        .section { border: 1px solid #222; padding: 15px; margin-bottom: 15px; background: #080808; display: none; }
-        .section.active { display: block; }
-        
-        .tabs { display: flex; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 12px; background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer; font-size: 14px; font-weight: bold; text-align: center; }
-        .tab-btn.active { background: #0f0; color: #000; }
-        .tab-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        
-        h3 { margin-top: 0; color: #38bdf8; font-size: 16px; }
-        
-        #chatBox { height: 220px; background: #111; border: 1px solid #0f0; padding: 10px; overflow-y: scroll; margin-bottom: 10px; font-size: 13px; }
-        .chat-msg { margin-bottom: 5px; word-break: break-all; }
-        .chat-msg.me { color: #38bdf8; }
-        .chat-msg.peer { color: #0f0; }
-        .chat-msg.system { color: #f1c40f; font-style: italic; }
-        .chat-input-row { display: flex; gap: 5px; }
-        .chat-input-row input { flex: 1; background: #111; color: #0f0; border: 1px solid #0f0; padding: 10px; font-family: monospace; }
-        .chat-input-row button { width: 80px; margin: 0; }
-        .file-upload-box { border: 1px dashed #38bdf8; padding: 8px; margin-bottom: 8px; background: #050d14; font-size: 12px; color: #38bdf8; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>P2P Chat & File Share</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{--bg:#090d18;--panel:#111827;--panel2:#0d1424;--text:#f4f7fb;--muted:#94a3b8;--line:#263247;--blue:#38bdf8;--green:#34d399;--red:#fb7185;--amber:#fbbf24}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}body{padding:18px}.app{width:min(760px,100%);margin:0 auto;padding-bottom:max(24px,env(safe-area-inset-bottom))}h1{margin:8px 0 6px;font-size:clamp(1.65rem,5vw,2.25rem)}.sub{margin:0 0 16px;color:var(--muted);line-height:1.5}.notice{padding:12px 14px;border:1px solid #2c3a54;background:#0d1527;border-radius:14px;color:#cbd5e1;font-size:.9rem;line-height:1.45;margin-bottom:16px}.status{display:flex;align-items:center;gap:9px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);margin-bottom:14px;font-weight:700}.dot{width:10px;height:10px;border-radius:50%;background:#64748b;box-shadow:0 0 0 4px rgba(100,116,139,.12)}.status.connected .dot{background:var(--green);box-shadow:0 0 0 4px rgba(52,211,153,.13)}.status.error .dot{background:var(--red)}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}.choice{min-height:96px;font-size:1rem}.choice strong{display:block;font-size:1.08rem;margin-bottom:4px}.choice span{font-size:.84rem;color:var(--muted);font-weight:500}.hidden{display:none!important}.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}.stack{display:grid;gap:10px}button,.file-label{appearance:none;border:1px solid #334155;background:#182235;color:#fff;border-radius:12px;padding:12px 14px;font:700 .92rem inherit;cursor:pointer;text-align:center;transition:.16s ease}button:hover,.file-label:hover{border-color:#5b6b84;background:#1d2a40}button.primary{background:#0ea5e9;border-color:#0ea5e9;color:#001018}button.good{background:#10b981;border-color:#10b981;color:#00150f}button.danger{background:#31131c;border-color:#7f1d1d;color:#fecdd3}button.ghost{background:transparent}button:disabled{opacity:.45;cursor:not-allowed}.label{font-size:.82rem;color:var(--muted);margin:2px 0 6px}.codebox{width:100%;min-height:96px;resize:vertical;border:1px solid #334155;border-radius:12px;background:#080d17;color:#bfe9ff;padding:11px;font:12px ui-monospace,SFMono-Regular,Consolas,monospace;line-height:1.45}input[type=text]{width:100%;border:1px solid #334155;border-radius:12px;background:#080d17;color:#fff;padding:12px;font:inherit}.tiny{font-size:.8rem;color:var(--muted);line-height:1.45}.chatbox{height:250px;overflow:auto;border:1px solid #263247;background:#080d17;border-radius:12px;padding:10px;margin-bottom:10px}.msg{padding:7px 9px;border-radius:10px;margin:6px 0;max-width:88%;word-break:break-word}.msg.me{margin-left:auto;background:#123452;color:#d8f3ff}.msg.peer{background:#123326;color:#d5ffe8}.msg.system{max-width:100%;background:#292313;color:#fde68a;font-size:.83rem}.transfer{border:1px solid #2b3850;border-radius:12px;background:#0a1220;padding:12px}.filemeta{font-size:.9rem;margin-bottom:8px}.progressWrap{display:none}.progressWrap.show{display:block}progress{width:100%;height:12px;accent-color:#38bdf8}.progressText{font-size:.8rem;color:var(--muted);margin-top:5px}.incoming{border-color:#36506f;background:#0b1728}.toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}.toolbar h2{margin:0;font-size:1.05rem}.pill{font-size:.76rem;padding:5px 8px;border-radius:999px;border:1px solid #29523f;color:#86efac;background:#0b1f18}.section-title{font-size:1rem;margin:0 0 10px}.file-label{display:block}.selected{margin-top:8px;font-size:.83rem;color:#cbd5e1;min-height:20px}.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}.toast{min-height:20px;font-size:.82rem;color:#cbd5e1;margin-top:8px}.toast.error{color:#fda4af}.toast.good{color:#86efac}@media(max-width:620px){body{padding:12px}.choices,.split{grid-template-columns:1fr}.row{flex-direction:column;align-items:stretch}.row>*{width:100%}.card{padding:14px;border-radius:16px}.choice{min-height:78px}.chatbox{height:220px}.toolbar{align-items:flex-start}.toolbar .pill{white-space:nowrap}}
+</style>
 </head>
 <body>
+<main class="app">
+<h1>P2P Chat & File Share</h1>
+<p class="sub">Connect two browsers directly for chat and small file transfers.</p>
+<div class="notice">Direct WebRTC connection. Only exchange connection codes and files with people you trust. Chat and files are sent peer-to-peer and are not uploaded to this site.</div>
+<div id="statusBox" class="status"><span class="dot"></span><span id="statusText">Not connected</span></div>
 
-    <h1>💬📦 Secure P2P Chat & File Share</h1>
+<section id="startCard" class="card">
+<h2 class="section-title">Start a connection</h2>
+<div class="choices">
+<button class="choice primary" onclick="showRole('send')"><strong>Send</strong><span>Create a connection code to share</span></button>
+<button class="choice" onclick="showRole('receive')"><strong>Receive</strong><span>Paste a code and create a reply</span></button>
+</div>
+</section>
 
-    <div class="disclaimer">
-        ⚠️ <strong>Security Notice:</strong> You are connecting directly peer-to-peer. Always verify the identity of your peer and only accept connection keys or files from trusted sources. Do not accept unknown connections or files from untrusted parties. You acknowledge and bear full responsibility for your own security and any risks involved in data transfers.
-    </div>
+<section id="senderCard" class="card hidden">
+<div class="toolbar"><h2>Send</h2><button class="ghost" onclick="resetConnection()">Start Over</button></div>
+<div class="stack">
+<button class="primary" id="createOfferBtn" onclick="startSender()">Create Code</button>
+<div><div class="label">Share this code with the other person</div><textarea id="offer" class="codebox" readonly placeholder="Your connection code will appear here"></textarea></div>
+<div class="split"><button onclick="copyText('offer')">Copy Code</button><button onclick="downloadTxt('offer','p2p-offer.txt')">Download TXT</button></div>
+<div class="label">Paste their reply here</div>
+<textarea id="replyFromB" class="codebox" placeholder="Paste reply code"></textarea>
+<label class="file-label">Load Reply TXT<input type="file" accept=".txt,text/plain" hidden onchange="loadTxt(event,'replyFromB')"></label>
+<button class="good" onclick="acceptAnswer()">Connect</button>
+<div id="senderToast" class="toast"></div>
+</div>
+</section>
 
-    <!-- 3 TABS -->
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('sender')">1. Sender</button>
-        <button class="tab-btn" onclick="switchTab('receiver')">2. Receiver</button>
-        <button class="tab-btn" id="chatTabBtn" onclick="switchTab('chat')" disabled>3. Chat & Files 🔒</button>
-    </div>
+<section id="receiverCard" class="card hidden">
+<div class="toolbar"><h2>Receive</h2><button class="ghost" onclick="resetConnection()">Start Over</button></div>
+<div class="stack">
+<div class="label">Paste the sender's code</div>
+<textarea id="offerFromA" class="codebox" placeholder="Paste connection code"></textarea>
+<label class="file-label">Load Offer TXT<input type="file" accept=".txt,text/plain" hidden onchange="loadTxt(event,'offerFromA')"></label>
+<button class="primary" onclick="startReceiver()">Create Reply</button>
+<div><div class="label">Send this reply back to the sender</div><textarea id="reply" class="codebox" readonly placeholder="Your reply code will appear here"></textarea></div>
+<div class="split"><button onclick="copyText('reply')">Copy Reply</button><button onclick="downloadTxt('reply','p2p-reply.txt')">Download TXT</button></div>
+<div id="receiverToast" class="toast"></div>
+</div>
+</section>
 
-    <!-- SENDER PANEL -->
-    <div id="senderPanel" class="section active">
-        <h3>Step 1: Create Connection Offer</h3>
-        <button onclick="startSender()">Generate Offer Code</button>
-        <textarea id="offer" placeholder="Offer code string appears here..."></textarea>
-        <div class="btn-row">
-            <button class="btn-copy" onclick="copyToClipboard('offer')">📋 Copy Offer</button>
-            <button class="btn-txt" onclick="downloadTxt('offer', 'offer-key.txt')">💾 Download Offer TXT</button>
-        </div>
+<section id="connectedCard" class="card hidden">
+<div class="toolbar"><h2>Connected</h2><div class="pill">Direct P2P</div></div>
+<h3 class="section-title">Chat</h3>
+<div id="chatBox" class="chatbox"></div>
+<div class="row"><input id="chatInput" type="text" placeholder="Type a message" onkeydown="if(event.key==='Enter')sendChatMessage()"><button onclick="sendChatMessage()">Send</button></div>
 
-        <h3 style="margin-top:15px;">Step 3: Finalize Connection</h3>
-        <div class="file-upload-box">
-            📂 Or Upload Receiver's Answer TXT: <input type="file" accept=".txt" onchange="loadTxtIntoTextarea(event, 'replyFromB')">
-        </div>
-        <textarea id="replyFromB" placeholder="Paste Answer string from Receiver here..."></textarea>
-        <button onclick="acceptAnswer()">Final Connect</button>
-    </div>
+<h3 class="section-title" style="margin-top:20px">Send File · Max 30 MB</h3>
+<div class="transfer">
+<label class="file-label">Choose File<input id="fileInput" type="file" hidden></label>
+<div id="selectedFile" class="selected">No file selected</div>
+<button id="sendFileBtn" class="primary" onclick="sendFile()">Send File</button>
+<div id="sendProgress" class="progressWrap"><progress id="sendBar" value="0" max="100"></progress><div id="sendProgressText" class="progressText"></div></div>
+</div>
 
-    <!-- RECEIVER PANEL -->
-    <div id="receiverPanel" class="section">
-        <h3>Step 2: Input Sender's Offer & Generate Answer</h3>
-        <div class="file-upload-box">
-            📂 Or Upload Sender's Offer TXT: <input type="file" accept=".txt" onchange="loadTxtIntoTextarea(event, 'offerFromA')">
-        </div>
-        <textarea id="offerFromA" placeholder="Paste Offer string from Sender here..."></textarea>
-        <button onclick="startReceiver()">Create Answer</button>
-        
-        <textarea id="reply" placeholder="Answer code string appears here..."></textarea>
-        <div class="btn-row">
-            <button class="btn-copy" onclick="copyToClipboard('reply')">📋 Copy Answer</button>
-            <button class="btn-txt" onclick="downloadTxt('reply', 'answer-key.txt')">💾 Download Answer TXT</button>
-        </div>
-    </div>
+<div id="incomingBox" class="transfer incoming hidden" style="margin-top:10px">
+<div class="filemeta" id="incomingMetaText"></div>
+<div class="split"><button class="good" onclick="acceptIncoming()">Accept</button><button class="danger" onclick="rejectIncoming()">Reject</button></div>
+</div>
+<div id="receiveProgress" class="progressWrap" style="margin-top:10px"><progress id="receiveBar" value="0" max="100"></progress><div id="receiveProgressText" class="progressText"></div></div>
 
-    <!-- CHAT & FILE PANEL -->
-    <div id="chatPanel" class="section">
-        <h3>Secure P2P Chat</h3>
-        <div id="chatBox"></div>
-        <div class="chat-input-row">
-            <input type="text" id="chatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-            <button onclick="sendChatMessage()">Send</button>
-        </div>
-
-        <h3 style="margin-top:20px;">Send File (Ideal: 1KB ~ 499MB)</h3>
-        <input type="file" id="fileInput"><br><br>
-        <button onclick="sendFile()">Send File</button>
-        <progress id="progressBar" value="0" max="100" style="margin-top:8px; display:none;"></progress>
-    </div>
-
-    <div id="status">Status: Not connected</div>
-
-    <script>
-        let pc = null;
-        let dataChannel = null;
-        let incomingMeta = null;
-        let receivedBuffers = [];
-        let receivedSize = 0;
-        let isFileRejected = false;
-        let activeFile = null;
-
-        function switchTab(mode) {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                if (!btn.disabled || btn.id !== 'chatTabBtn') btn.classList.remove('active');
-            });
-            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-
-            if (mode === 'sender') {
-                document.querySelector('.tabs button:nth-child(1)').classList.add('active');
-                document.getElementById('senderPanel').classList.add('active');
-            } else if (mode === 'receiver') {
-                document.querySelector('.tabs button:nth-child(2)').classList.add('active');
-                document.getElementById('receiverPanel').classList.add('active');
-            } else if (mode === 'chat') {
-                document.getElementById('chatTabBtn').classList.add('active');
-                document.getElementById('chatPanel').classList.add('active');
-            }
-        }
-
-        function copyToClipboard(elementId) {
-            const textarea = document.getElementById(elementId);
-            if (!textarea.value) return alert("Nothing to copy yet!");
-            navigator.clipboard.writeText(textarea.value).then(() => {
-                alert("Copied to clipboard!");
-            });
-        }
-
-        function downloadTxt(elementId, filename) {
-            const text = document.getElementById(elementId).value;
-            if (!text) return alert("No code generated yet!");
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function loadTxtIntoTextarea(event, textareaId) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById(textareaId).value = e.target.result;
-                alert("Key file loaded successfully!");
-            };
-            reader.readAsText(file);
-        }
-
-        function parseCleanJSON(text) {
-            if (!text) throw new Error("Empty input");
-            const cleaned = text.replace(/(\r\n|\n|\r)/gm, "").trim();
-            return JSON.parse(cleaned);
-        }
-
-        function createPeerConnection() {
-            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-        }
-
-        async function startSender() {
-            createPeerConnection();
-            dataChannel = pc.createDataChannel("p2p-channel");
-            setupDataChannel();
-
-            pc.onicecandidate = (event) => {
-                if (!event.candidate) {
-                    document.getElementById('offer').value = JSON.stringify(pc.localDescription);
-                    document.getElementById('status').innerText = "Status: Offer generated. Copy code or download TXT key.";
-                }
-            };
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-        }
-
-        async function startReceiver() {
-            try {
-                const rawText = document.getElementById('offerFromA').value;
-                const offerData = parseCleanJSON(rawText);
-                
-                createPeerConnection();
-
-                pc.ondatachannel = (event) => {
-                    dataChannel = event.channel;
-                    setupDataChannel();
-                };
-
-                pc.onicecandidate = (event) => {
-                    if (!event.candidate) {
-                        document.getElementById('reply').value = JSON.stringify(pc.localDescription);
-                        document.getElementById('status').innerText = "Status: Answer generated. Copy code or download TXT key.";
-                    }
-                };
-
-                await pc.setRemoteDescription(new RTCSessionDescription(offerData));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-
-            } catch (e) {
-                alert("Invalid key format! Ensure you uploaded or pasted a valid offer key.");
-            }
-        }
-
-        async function acceptAnswer() {
-            try {
-                const rawText = document.getElementById('replyFromB').value;
-                const answerData = parseCleanJSON(rawText);
-                
-                await pc.setRemoteDescription(new RTCSessionDescription(answerData));
-                document.getElementById('status').innerText = "Status: Finalizing connection...";
-            } catch (e) {
-                alert("Invalid key format! Ensure you uploaded or pasted a valid answer key.");
-            }
-        }
-
-        function setupDataChannel() {
-            dataChannel.onopen = () => {
-                document.getElementById('status').innerText = "Status: ✅ Connected! Tab 3 unlocked.";
-                
-                const chatBtn = document.getElementById('chatTabBtn');
-                chatBtn.disabled = false;
-                chatBtn.innerText = "3. Chat & Files 🟢";
-                switchTab('chat');
-            };
-
-            dataChannel.onclose = () => {
-                document.getElementById('status').innerText = "Status: Connection closed.";
-                const chatBtn = document.getElementById('chatTabBtn');
-                chatBtn.disabled = true;
-                chatBtn.innerText = "3. Chat & Files 🔒";
-            };
-
-            dataChannel.onmessage = (event) => {
-                if (typeof event.data === 'string') {
-                    try {
-                        const msg = JSON.parse(event.data);
-                        if (msg.type === 'chat') {
-                            appendChat("Peer", msg.text, "peer");
-                            return;
-                        } else if (msg.type === 'meta') {
-                            incomingMeta = msg;
-                            receivedBuffers = [];
-                            receivedSize = 0;
-                            isFileRejected = false;
-
-                            const sizeMB = (incomingMeta.size / 1024 / 1024).toFixed(2);
-                            const accept = confirm(`📥 Incoming File Request:\n\nName: ${incomingMeta.name}\nSize: ${sizeMB} MB\n\nDo you want to accept this file?`);
-                            
-                            if (!accept) {
-                                isFileRejected = true;
-                                dataChannel.send(JSON.stringify({ type: 'reject' }));
-                                appendChat("System", `❌ You rejected incoming file: ${incomingMeta.name}`, "system");
-                            } else {
-                                dataChannel.send(JSON.stringify({ type: 'accept' }));
-                                document.getElementById('progressBar').style.display = 'block';
-                                appendChat("System", `📥 Accepting file: ${incomingMeta.name}...`, "system");
-                            }
-                            return;
-                        } else if (msg.type === 'reject') {
-                            appendChat("System", `❌ Peer rejected your file transfer.`, "system");
-                            document.getElementById('progressBar').style.display = 'none';
-                            return;
-                        } else if (msg.type === 'accept') {
-                            appendChat("System", `✅ Peer accepted file! Sending...`, "system");
-                            startStreamingFile();
-                            return;
-                        }
-                    } catch (e) {}
-                    
-                    appendChat("Peer", event.data, "peer");
-                } else {
-                    if (isFileRejected) return;
-
-                    receivedBuffers.push(event.data);
-                    receivedSize += event.data.byteLength;
-
-                    const progress = document.getElementById('progressBar');
-                    progress.max = incomingMeta.size;
-                    progress.value = receivedSize;
-
-                    if (receivedSize >= incomingMeta.size) {
-                        appendChat("System", `✅ File received successfully! Saving...`, "system");
-                        const blob = new Blob(receivedBuffers);
-                        const url = URL.createObjectURL(blob);
-                        
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = incomingMeta.name;
-                        a.click();
-                    }
-                }
-            };
-        }
-
-        // 🛡️ XSS Prevention: Use textContent so HTML tags are rendered as literal text instead of code
-        function appendChat(sender, text, className) {
-            const chatBox = document.getElementById('chatBox');
-            const div = document.createElement('div');
-            div.className = `chat-msg ${className}`;
-            div.textContent = `[${sender}]: ${text}`;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            if (!text || !dataChannel || dataChannel.readyState !== "open") return;
-
-            dataChannel.send(JSON.stringify({ type: 'chat', text: text }));
-            appendChat("You", text, "me");
-            input.value = "";
-        }
-
-        async function sendFile() {
-            if (!dataChannel || dataChannel.readyState !== "open") return alert("Not connected yet!");
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            if (!file) return alert("Select a file first.");
-
-            if (file.size > 500 * 1024 * 1024) {
-                if (!confirm("This file exceeds the recommended 499MB limit. Proceed anyway?")) {
-                    return;
-                }
-            }
-
-            activeFile = file;
-            appendChat("System", `🚀 Sending file request: ${file.name}...`, "system");
-            dataChannel.send(JSON.stringify({ type: 'meta', name: file.name, size: file.size }));
-        }
-
-        async function startStreamingFile() {
-            if (!activeFile) return;
-            const file = activeFile;
-            const chunkSize = 64 * 1024;
-            let offset = 0;
-            const progress = document.getElementById('progressBar');
-            progress.style.display = 'block';
-            progress.max = file.size;
-
-            while (offset < file.size) {
-                const chunk = file.slice(offset, offset + chunkSize);
-                const buffer = await chunk.arrayBuffer();
-                
-                while (dataChannel.bufferedAmount > 1024 * 1024) {
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                }
-
-                dataChannel.send(buffer);
-                offset += chunk.size;
-                progress.value = offset;
-            }
-
-            appendChat("System", `✅ File sent successfully!`, "system");
-        }
-    </script>
+<button class="danger" style="margin-top:16px" onclick="disconnectPeer()">Disconnect</button>
+</section>
+</main>
+<script>
+const MAX_FILE=30*1024*1024,CHUNK=64*1024;
+let pc=null,dataChannel=null,activeFile=null,incomingMeta=null,receivedBuffers=[],receivedSize=0,acceptingFile=false;
+const $=id=>document.getElementById(id);
+function setStatus(text,type=''){const box=$('statusBox');box.className='status'+(type?' '+type:'');$('statusText').textContent=text}
+function toast(id,text,type=''){const el=$(id);el.textContent=text;el.className='toast'+(type?' '+type:'')}
+function showRole(role){$('startCard').classList.add('hidden');$('senderCard').classList.toggle('hidden',role!=='send');$('receiverCard').classList.toggle('hidden',role!=='receive');setStatus(role==='send'?'Ready to create a connection code':'Waiting for sender code')}
+function showConnected(){['startCard','senderCard','receiverCard'].forEach(id=>$(id).classList.add('hidden'));$('connectedCard').classList.remove('hidden');setStatus('Connected','connected');appendChat('System','Direct connection established.','system')}
+function parseCleanJSON(text){if(!text.trim())throw new Error('Empty code');return JSON.parse(text.replace(/\r?\n/g,'').trim())}
+function makePeer(){if(pc)try{pc.close()}catch{};pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});pc.onconnectionstatechange=()=>{const s=pc.connectionState;if(s==='connected')setStatus('Connected','connected');else if(s==='connecting')setStatus('Connecting…');else if(['failed','disconnected','closed'].includes(s)){setStatus(s==='failed'?'Connection failed':'Disconnected',s==='failed'?'error':'');if(s==='failed')appendChat('System','Connection failed. Start a new connection and try again.','system')}};return pc}
+function waitIceComplete(peer){return new Promise(resolve=>{if(peer.iceGatheringState==='complete')return resolve();const fn=()=>{if(peer.iceGatheringState==='complete'){peer.removeEventListener('icegatheringstatechange',fn);resolve()}};peer.addEventListener('icegatheringstatechange',fn)})}
+async function startSender(){try{resetPeerOnly();toast('senderToast','Creating code…');makePeer();dataChannel=pc.createDataChannel('p2p-channel');setupDataChannel();const offer=await pc.createOffer();await pc.setLocalDescription(offer);await waitIceComplete(pc);$('offer').value=JSON.stringify(pc.localDescription);toast('senderToast','Code ready to share.','good');setStatus('Waiting for reply')}catch(e){toast('senderToast','Could not create connection code.','error');setStatus('Connection setup failed','error')}}
+async function startReceiver(){try{const offerData=parseCleanJSON($('offerFromA').value);resetPeerOnly();toast('receiverToast','Creating reply…');makePeer();pc.ondatachannel=e=>{dataChannel=e.channel;setupDataChannel()};await pc.setRemoteDescription(offerData);const answer=await pc.createAnswer();await pc.setLocalDescription(answer);await waitIceComplete(pc);$('reply').value=JSON.stringify(pc.localDescription);toast('receiverToast','Reply ready. Send it back to the sender.','good');setStatus('Reply created · waiting for sender')}catch(e){toast('receiverToast','Invalid or unusable connection code.','error');setStatus('Check the connection code','error')}}
+async function acceptAnswer(){try{if(!pc)throw new Error();const answer=parseCleanJSON($('replyFromB').value);toast('senderToast','Connecting…');setStatus('Connecting…');await pc.setRemoteDescription(answer)}catch(e){toast('senderToast','Invalid or unusable reply code.','error');setStatus('Check the reply code','error')}}
+function setupDataChannel(){dataChannel.binaryType='arraybuffer';dataChannel.onopen=showConnected;dataChannel.onclose=()=>setStatus('Disconnected');dataChannel.onerror=()=>setStatus('Connection error','error');dataChannel.onmessage=handleMessage}
+function handleMessage(event){if(typeof event.data==='string'){let msg;try{msg=JSON.parse(event.data)}catch{return appendChat('Peer',event.data,'peer')}
+if(msg.type==='chat')return appendChat('Peer',msg.text,'peer');
+if(msg.type==='meta'){if(msg.size>MAX_FILE){dataChannel.send(JSON.stringify({type:'reject',reason:'too-large'}));appendChat('System','Incoming file rejected because it exceeds 30 MB.','system');return}incomingMeta=msg;receivedBuffers=[];receivedSize=0;acceptingFile=false;$('incomingMetaText').textContent=`Incoming: ${msg.name} · ${formatBytes(msg.size)}`;$('incomingBox').classList.remove('hidden');return}
+if(msg.type==='accept'){appendChat('System','Peer accepted the file. Sending…','system');return startStreamingFile()}
+if(msg.type==='reject'){hideProgress('send');activeFile=null;appendChat('System',msg.reason==='too-large'?'Peer rejected the file because it exceeds 30 MB.':'Peer rejected the file.','system');return}
+if(msg.type==='done'){finishReceivedFile();return}}
+if(!acceptingFile||!incomingMeta)return;receivedBuffers.push(event.data);receivedSize+=event.data.byteLength;updateProgress('receive',receivedSize,incomingMeta.size)}
+function appendChat(sender,text,cls){const div=document.createElement('div');div.className='msg '+cls;div.textContent=`${sender}: ${text}`;$('chatBox').appendChild(div);$('chatBox').scrollTop=$('chatBox').scrollHeight}
+function sendChatMessage(){const input=$('chatInput'),text=input.value.trim();if(!text||!dataChannel||dataChannel.readyState!=='open')return;dataChannel.send(JSON.stringify({type:'chat',text}));appendChat('You',text,'me');input.value=''}
+$('fileInput').addEventListener('change',()=>{const f=$('fileInput').files[0];if(!f){$('selectedFile').textContent='No file selected';return}$('selectedFile').textContent=`${f.name} · ${formatBytes(f.size)}`;if(f.size>MAX_FILE){$('selectedFile').textContent+=' · File too large. Maximum size is 30 MB.';$('sendFileBtn').disabled=true}else $('sendFileBtn').disabled=false});
+function sendFile(){if(!dataChannel||dataChannel.readyState!=='open')return appendChat('System','Not connected.','system');const f=$('fileInput').files[0];if(!f)return appendChat('System','Choose a file first.','system');if(f.size>MAX_FILE)return appendChat('System','File too large. Maximum size is 30 MB.','system');activeFile=f;dataChannel.send(JSON.stringify({type:'meta',name:f.name,size:f.size,typeName:f.type||'application/octet-stream'}));appendChat('System',`File request sent: ${f.name}`,'system')}
+function acceptIncoming(){if(!incomingMeta)return;acceptingFile=true;$('incomingBox').classList.add('hidden');showProgress('receive');updateProgress('receive',0,incomingMeta.size);dataChannel.send(JSON.stringify({type:'accept'}));appendChat('System',`Receiving ${incomingMeta.name}…`,'system')}
+function rejectIncoming(){if(!incomingMeta)return;dataChannel.send(JSON.stringify({type:'reject'}));appendChat('System',`Rejected ${incomingMeta.name}.`,'system');incomingMeta=null;$('incomingBox').classList.add('hidden')}
+async function startStreamingFile(){if(!activeFile||!dataChannel||dataChannel.readyState!=='open')return;showProgress('send');let offset=0;while(offset<activeFile.size){while(dataChannel.bufferedAmount>1024*1024)await new Promise(r=>setTimeout(r,30));const chunk=activeFile.slice(offset,offset+CHUNK);const buf=await chunk.arrayBuffer();dataChannel.send(buf);offset+=chunk.size;updateProgress('send',offset,activeFile.size)}dataChannel.send(JSON.stringify({type:'done'}));appendChat('System',`File sent: ${activeFile.name}`,'system');setTimeout(()=>hideProgress('send'),900);activeFile=null}
+function finishReceivedFile(){if(!incomingMeta||receivedSize<incomingMeta.size)return;const blob=new Blob(receivedBuffers,{type:incomingMeta.typeName||'application/octet-stream'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=incomingMeta.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);appendChat('System',`File received: ${incomingMeta.name}`,'system');hideProgress('receive');receivedBuffers=[];receivedSize=0;incomingMeta=null;acceptingFile=false}
+function showProgress(which){$(which+'Progress').classList.add('show')}
+function hideProgress(which){$(which+'Progress').classList.remove('show');$(which+'Bar').value=0;$(which+'ProgressText').textContent=''}
+function updateProgress(which,done,total){showProgress(which);$(which+'Bar').max=total;$(which+'Bar').value=done;const pct=total?Math.min(100,Math.round(done/total*100)):0;$(which+'ProgressText').textContent=`${formatBytes(done)} / ${formatBytes(total)} · ${pct}%`}
+function formatBytes(n){if(n<1024)return n+' B';if(n<1024*1024)return(n/1024).toFixed(1)+' KB';return(n/1024/1024).toFixed(2)+' MB'}
+async function copyText(id){const text=$(id).value;if(!text)return;try{await navigator.clipboard.writeText(text);const t=id==='reply'?'receiverToast':'senderToast';toast(t,'Copied.','good')}catch{toast(id==='reply'?'receiverToast':'senderToast','Copy failed. Select the code manually.','error')}}
+function downloadTxt(id,name){const text=$(id).value;if(!text)return;const url=URL.createObjectURL(new Blob([text],{type:'text/plain'})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
+function loadTxt(event,id){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{$(id).value=e.target.result;const t=id==='offerFromA'?'receiverToast':'senderToast';toast(t,'TXT loaded.','good')};r.readAsText(file)}
+function resetPeerOnly(){try{dataChannel?.close()}catch{}try{pc?.close()}catch{}dataChannel=null;pc=null}
+function disconnectPeer(){resetPeerOnly();setStatus('Disconnected');appendChat('System','Connection closed.','system');setTimeout(resetConnection,350)}
+function resetConnection(){resetPeerOnly();activeFile=null;incomingMeta=null;receivedBuffers=[];receivedSize=0;acceptingFile=false;['offer','replyFromB','offerFromA','reply','chatInput'].forEach(id=>$(id).value='');$('chatBox').innerHTML='';$('fileInput').value='';$('selectedFile').textContent='No file selected';$('sendFileBtn').disabled=false;$('incomingBox').classList.add('hidden');hideProgress('send');hideProgress('receive');['senderCard','receiverCard','connectedCard'].forEach(id=>$(id).classList.add('hidden'));$('startCard').classList.remove('hidden');toast('senderToast','');toast('receiverToast','');setStatus('Not connected')}
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
 </body>
 </html>
